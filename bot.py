@@ -19,9 +19,11 @@ DISCORD_TOKEN = ''
 BOT_NAME = 'NexoHost'
 PREFIX = '!'
 YOUR_SERVER_IP = ''
-MAIN_ADMIN_ID = '1246447860413632673,1413540044345704530'
+MAIN_ADMIN_ID = '1246447860413632673,1413540044345704530'  # Comma-separated admin IDs
 VPS_USER_ROLE_ID = ''
 DEFAULT_STORAGE_POOL = 'default'
+# Parse MAIN_ADMIN_ID into a list
+MAIN_ADMIN_IDS = [admin_id.strip() for admin_id in MAIN_ADMIN_ID.split(',') if admin_id.strip()]
 # OS Options for VPS Creation and Reinstall
 OS_OPTIONS = [
     {"label": "Ubuntu 20.04 LTS", "value": "ubuntu:20.04"},
@@ -57,7 +59,9 @@ def init_db():
     cur.execute('''CREATE TABLE IF NOT EXISTS admins (
         user_id TEXT PRIMARY KEY
     )''')
-    cur.execute('INSERT OR IGNORE INTO admins (user_id) VALUES (?)', (str(MAIN_ADMIN_ID),))
+    # Insert all main admin IDs
+    for admin_id in MAIN_ADMIN_IDS:
+        cur.execute('INSERT OR IGNORE INTO admins (user_id) VALUES (?)', (admin_id,))
     cur.execute('''CREATE TABLE IF NOT EXISTS vps (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id TEXT NOT NULL,
@@ -308,17 +312,22 @@ def create_info_embed(title, description=""):
     return create_embed(title, description, color=0x00ccff)
 def create_warning_embed(title, description=""):
     return create_embed(title, description, color=0xffaa00)
+# Helper function to check if user is a main admin
+def is_main_admin_user(user_id: str) -> bool:
+    """Check if a user ID is in the main admin list"""
+    return str(user_id) in MAIN_ADMIN_IDS
+
 # Admin checks
 def is_admin():
     async def predicate(ctx):
         user_id = str(ctx.author.id)
-        if user_id == str(MAIN_ADMIN_ID) or user_id in admin_data.get("admins", []):
+        if is_main_admin_user(user_id) or user_id in admin_data.get("admins", []):
             return True
         raise commands.CheckFailure("You need admin permissions to use this command. Contact support.")
     return commands.check(predicate)
 def is_main_admin():
     async def predicate(ctx):
-        if str(ctx.author.id) == str(MAIN_ADMIN_ID):
+        if is_main_admin_user(ctx.author.id):
             return True
         raise commands.CheckFailure("Only the main admin can use this command.")
     return commands.check(predicate)
@@ -1090,7 +1099,7 @@ class ManageView(discord.ui.View):
 async def manage_vps(ctx, user: discord.Member = None):
     if user:
         user_id_check = str(ctx.author.id)
-        if user_id_check != str(MAIN_ADMIN_ID) and user_id_check not in admin_data.get("admins", []):
+        if not is_main_admin_user(user_id_check) and user_id_check not in admin_data.get("admins", []):
             await ctx.send(embed=create_error_embed("Access Denied", "Only admins can manage other users' VPS."))
             return
         user_id = str(user.id)
@@ -1452,8 +1461,8 @@ async def add_resources(ctx, vps_id: str, ram: int = None, cpu: int = None, disk
 @is_main_admin()
 async def admin_add(ctx, user: discord.Member):
     user_id = str(user.id)
-    if user_id == str(MAIN_ADMIN_ID):
-        await ctx.send(embed=create_error_embed("Already Admin", "This user is already the main admin!"))
+    if is_main_admin_user(user_id):
+        await ctx.send(embed=create_error_embed("Already Admin", "This user is already a main admin!"))
         return
     if user_id in admin_data.get("admins", []):
         await ctx.send(embed=create_error_embed("Already Admin", f"{user.mention} is already an admin!"))
@@ -1469,8 +1478,8 @@ async def admin_add(ctx, user: discord.Member):
 @is_main_admin()
 async def admin_remove(ctx, user: discord.Member):
     user_id = str(user.id)
-    if user_id == str(MAIN_ADMIN_ID):
-        await ctx.send(embed=create_error_embed("Cannot Remove", "You cannot remove the main admin!"))
+    if is_main_admin_user(user_id):
+        await ctx.send(embed=create_error_embed("Cannot Remove", "You cannot remove a main admin!"))
         return
     if user_id not in admin_data.get("admins", []):
         await ctx.send(embed=create_error_embed("Not Admin", f"{user.mention} is not an admin!"))
@@ -1486,9 +1495,17 @@ async def admin_remove(ctx, user: discord.Member):
 @is_main_admin()
 async def admin_list(ctx):
     admins = admin_data.get("admins", [])
-    main_admin = await bot.fetch_user(MAIN_ADMIN_ID)
     embed = create_embed("👑 Admin Team", "Current administrators:", 0x1a1a1a)
-    add_field(embed, "🔰 Main Admin", f"{main_admin.mention} (ID: {MAIN_ADMIN_ID})", False)
+    # List all main admins
+    main_admin_list = []
+    for admin_id in MAIN_ADMIN_IDS:
+        try:
+            main_admin = await bot.fetch_user(int(admin_id))
+            main_admin_list.append(f"• {main_admin.mention} (ID: {admin_id})")
+        except:
+            main_admin_list.append(f"• Unknown User (ID: {admin_id})")
+    main_admin_text = "\n".join(main_admin_list)
+    add_field(embed, "🔰 Main Admins", main_admin_text, False)
     if admins:
         admin_list = []
         for admin_id in admins:
@@ -1544,8 +1561,9 @@ async def user_info(ctx, user: discord.Member):
     port_quota = get_user_allocation(user_id)
     port_used = get_user_used_ports(user_id)
     add_field(embed, "🌐 Port Quota", f"Allocated: {port_quota}, Used: {port_used}", False)
-    is_admin_user = user_id == str(MAIN_ADMIN_ID) or user_id in admin_data.get("admins", [])
-    add_field(embed, "🛡️ Admin Status", f"**{'Yes' if is_admin_user else 'No'}**", False)
+    is_admin_user = is_main_admin_user(user_id) or user_id in admin_data.get("admins", [])
+    admin_status = "Main Admin" if is_main_admin_user(user_id) else ("Admin" if user_id in admin_data.get("admins", []) else "No")
+    add_field(embed, "🛡️ Admin Status", f"**{admin_status}**", False)
     await ctx.send(embed=embed)
 @bot.command(name='serverstats')
 @is_admin()
@@ -2372,8 +2390,8 @@ class HelpView(discord.ui.View):
         """Update the category selection dropdown based on user permissions"""
         self.select = discord.ui.Select(placeholder="Select Category", options=[])
         user_id = str(self.ctx.author.id)
-        is_admin_user = user_id == str(MAIN_ADMIN_ID) or user_id in admin_data.get("admins", [])
-        is_main_admin_user = user_id == str(MAIN_ADMIN_ID)
+        is_admin_user = is_main_admin_user(user_id) or user_id in admin_data.get("admins", [])
+        is_main_admin_user_check = is_main_admin_user(user_id)
         # Add all categories that user has access to
         options = []
   
@@ -2393,7 +2411,7 @@ class HelpView(discord.ui.View):
                 emoji="🛡️"
             ))
       
-        if is_main_admin_user:
+        if is_main_admin_user_check:
             options.append(discord.SelectOption(
                 label=self.command_categories["main_admin"]["name"],
                 value="main_admin",
@@ -2426,16 +2444,16 @@ class HelpView(discord.ui.View):
         # Check permissions for admin categories
         category_data = self.command_categories[selected_category]
         if category_data.get("admin_only", False):
-            is_admin_user = user_id == str(MAIN_ADMIN_ID) or user_id in admin_data.get("admins", [])
-            is_main_admin_user = user_id == str(MAIN_ADMIN_ID)
+            is_admin_user_check = is_main_admin_user(user_id) or user_id in admin_data.get("admins", [])
+            is_main_admin_user_check = is_main_admin_user(user_id)
       
-            if category_data.get("main_admin_only", False) and not is_main_admin_user:
+            if category_data.get("main_admin_only", False) and not is_main_admin_user_check:
                 await interaction.response.send_message(
                     embed=create_error_embed("Access Denied", "This category requires Main Admin privileges."),
                     ephemeral=True
                 )
                 return
-            elif not is_admin_user:
+            elif not is_admin_user_check:
                 await interaction.response.send_message(
                     embed=create_error_embed("Access Denied", "This category requires Admin privileges."),
                     ephemeral=True
@@ -2496,13 +2514,13 @@ async def commands_alias(ctx):
     await show_help(ctx)
 @bot.command(name='stats')
 async def stats_alias(ctx):
-    if str(ctx.author.id) == str(MAIN_ADMIN_ID) or str(ctx.author.id) in admin_data.get("admins", []):
+    if is_main_admin_user(ctx.author.id) or str(ctx.author.id) in admin_data.get("admins", []):
         await server_stats(ctx)
     else:
         await ctx.send(embed=create_error_embed("Access Denied", "This command requires admin privileges."))
 @bot.command(name='info')
 async def info_alias(ctx, user: discord.Member = None):
-    if str(ctx.author.id) == str(MAIN_ADMIN_ID) or str(ctx.author.id) in admin_data.get("admins", []):
+    if is_main_admin_user(ctx.author.id) or str(ctx.author.id) in admin_data.get("admins", []):
         if user:
             await user_info(ctx, user)
         else:
