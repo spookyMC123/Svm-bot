@@ -16,10 +16,10 @@ import sqlite3
 import random
 # Load environment variables
 DISCORD_TOKEN = ''
-BOT_NAME = 'SVM Panel'
+BOT_NAME = 'NexoHost'
 PREFIX = '!'
 YOUR_SERVER_IP = ''
-MAIN_ADMIN_ID = '1405866008127864852'
+MAIN_ADMIN_ID = '1246447860413632673,1413540044345704530'
 VPS_USER_ROLE_ID = ''
 DEFAULT_STORAGE_POOL = 'default'
 # OS Options for VPS Creation and Reinstall
@@ -289,9 +289,9 @@ def create_embed(title, description="", color=0x1a1a1a):
         description=truncate_text(description, 4096),
         color=color
     )
-    embed.set_thumbnail(url="https://cdn.discordapp.com/attachments/1432759381354614874/1442343878773706872/1763894084589.jpg?ex=692516ea&is=6923c56a&hm=51827cdaa88f7e6a8678688917af51a4385e5ceab7a63ca5b143abbe93258def&")
+    embed.set_thumbnail(url="https://i.ibb.co.com/8L8Pp4Y3/Whats-App-Image-2025-12-10-at-2-35-32-PM.jpg")
     embed.set_footer(text=f"{BOT_NAME} VPS Manager • {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
-                     icon_url="https://cdn.discordapp.com/attachments/1432759381354614874/1442343878773706872/1763894084589.jpg?ex=692516ea&is=6923c56a&hm=51827cdaa88f7e6a8678688917af51a4385e5ceab7a63ca5b143abbe93258def&")
+                     icon_url="https://i.ibb.co.com/8L8Pp4Y3/Whats-App-Image-2025-12-10-at-2-35-32-PM.jpg")
     return embed
 def add_field(embed, name, value, inline=False):
     embed.add_field(
