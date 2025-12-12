@@ -2,7 +2,7 @@
 # SVM Bot Installation Script
 echo "================================================"
 echo "         Svm Bot Installation Script  
-echo ".           Powered by PowerDev
+echo ".           Powered by InfinityForge-Labs
 echo "================================================"
 echo ""
 
@@ -26,7 +26,8 @@ systemctl enable --now snapd.socket
 
 echo "[4/7] Installing LXD..."
 snap install lxd
-
+echo "[/8] createing pool..."
+lxc storage create default dir
 # Add user to lxd group
 if [ -n "$SUDO_USER" ]; then
     usermod -aG lxd $SUDO_USER
@@ -35,6 +36,7 @@ else
     echo "Warning: Could not detect sudo user. Please add your user to lxd group manually:"
     echo "sudo usermod -aG lxd \$USER"
 fi
+
 
 # Install Python and pip
 echo "[5/7] Installing Python and pip..."
