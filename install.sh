@@ -1,8 +1,8 @@
 #!/bin/bash
 # SVM Bot Installation Script
 echo "================================================"
-echo "         Svm Bot Installation Script  
-echo ".           Powered by InfinityForge-Labs
+echo "         Svm Bot Installation Script            "
+echo "           Powered by InfinityForge-Labs        "
 echo "================================================"
 echo ""
 
@@ -26,8 +26,6 @@ systemctl enable --now snapd.socket
 
 echo "[4/7] Installing LXD..."
 snap install lxd
-echo "[/8] createing pool..."
-lxc storage create default dir
 # Add user to lxd group
 if [ -n "$SUDO_USER" ]; then
     usermod -aG lxd $SUDO_USER
